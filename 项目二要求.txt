@@ -1,0 +1,42 @@
+实验：面向液位控制站的Modbus TCP至OPC UA协议网关
+2026-11-04 17:00:42 浏览量：48
+面向液位控制站的Modbus TCP至OPC UA协议网关
+
+## 实验目的
+
+在 K10 液位控制实验的基础上，实现一个运行于 PC 的协议网关，将 K10 的
+Modbus TCP 数据转换为 OPC UA 设备集成（Device Integration，DI）信息模型，
+并允许第三方 OPC UA Client 读取数据、修改参数和调用设备方法。
+
+## 功能需求
+
+1. 网关应通过 Modbus TCP 连接 K10，周期读取数据。
+2. 网关应支持通过 Modbus TCP 修改 K10 的液位设定值和运行参数。
+3. 网关应实现并启动 OPC UA 服务器。
+4. OPC UA 设备信息模型应基于 OPC UA 设备集成（DI）规范的 `DeviceType`
+   建立 `TankType`。
+5. 设备信息模型应同时包含 Variable 和 Method。
+6. 第三方 OPC UA Client 应能浏览设备节点并读取 Variable。
+7. 第三方 OPC UA Client 应能写入可控制 Variable。
+8. 第三方 OPC UA Client 应能调用 Method 修改液位设定值。
+9. 网关应完成 Modbus 寄存器整数与 OPC UA 工程值之间的双向转换。
+10. 网关应提供 Modbus 通讯状态和错误诊断信息。
+
+## 验收标准
+
+| 验收项 | 要求 |
+|---|---|
+| Modbus 通讯 | 网关能够连接 K10 并稳定读取设备和过程数据 |
+| OPC UA 服务 | 第三方 OPC UA Client 能成功连接网关 |
+| DI 信息模型 | 设备模型基于 OPC UA 设备集成（DI）的 `DeviceType` |
+| Variable | Client 能浏览并读取 Variable，可写 Variable 能正确修改设备参数 |
+| Method | Client 能调用 Method 完成至少一项设备操作 |
+| 数据转换 | OPC UA 工程值与 Modbus 原始整数转换正确 |
+| 状态诊断 | 能查看通讯连接状态和最近错误信息 |
+| 功能演示 | 能现场演示读取、写入和 Method 调用 |
+
+## 提交资料
+
+- 网关项目源码 zip（包含 OPC UA 设备信息模型和运行配置，不要包含 `.venv`、`build`、`__pycache__`、缓存目录及真实账号密码）
+- 实验报告 PDF（包含软件系统架构及流程、运行过程、实验结果等）
+- 设备演示视频、上位机屏幕录屏（3 分钟以内）
