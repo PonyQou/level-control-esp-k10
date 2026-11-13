@@ -1,0 +1,46 @@
+# ============ K10 (DFR0992) 板级默认配置 ============
+# 目标芯片 ESP32-S3
+CONFIG_IDF_TARGET="esp32s3"
+
+# 板载 16MB Flash + 8MB Octal PSRAM
+# 注意：S3 使用八线 PSRAM 时 Flash 必须 DIO 模式（引脚复用），
+# 即使写 QIO 也会被 Kconfig 自动降级为 DIO，属正常现象
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# 通过原生 USB 口（USB-Serial-JTAG）烧录与查看日志，无需外接串口转接器
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# 主任务栈加大
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# ============ Modbus TCP 从站 ============
+# 只启用 TCP 模式，关闭 RTU/ASCII
+CONFIG_FMB_COMM_MODE_RTU_EN=n
+CONFIG_FMB_COMM_MODE_ASCII_EN=n
+CONFIG_FMB_COMM_MODE_TCP_EN=y
+CONFIG_FMB_TCP_PORT_DEFAULT=502
+# 严格校验从站地址 1（UID 不匹配的请求被丢弃）
+CONFIG_FMB_TCP_UID_ENABLED=y
+# 浮点助手与扩展类型支持
+CONFIG_FMB_EXT_TYPE_SUPPORT=y
+CONFIG_FMB_PORT_TASK_PRIO=10
+CONFIG_FMB_PORT_TASK_STACK_SIZE=4096
+CONFIG_FMB_TIMER_USE_ISR_DISPATCH_METHOD=y
+# 断连残留连接自动清理（默认 2s/4s，保持默认即可）
+
+# ============ WiFi（占位密码，真实值在 menuconfig 里填） ============
+CONFIG_WIFI_SSID="your_ssid"
+CONFIG_WIFI_PASSWORD="your_password"
+
+# ============ 应用较大（WiFi+Modbus），用大应用分区表 ============
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# ============ LVGL ============
+# 必须开启：LVGL 内置 sprintf 依赖此选项支持 %f 浮点格式化
+# （否则界面数值全部显示成占位符 f）
+CONFIG_LV_USE_FLOAT=y

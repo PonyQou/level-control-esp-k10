@@ -1,0 +1,17 @@
+# 本工程自定义配置（idf.py menuconfig 里可见）
+menu "液位控制站配置"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "your_ssid"
+        help
+            K10 连接的 WiFi 名称。真实 SSID/密码只写在本机 sdkconfig，
+            提交 zip 时排除 sdkconfig（课程要求）。
+
+    config WIFI_PASSWORD
+        string "WiFi 密码"
+        default "your_password"
+        help
+            演示前用 idf.py menuconfig 填写真实密码。
+
+endmenu

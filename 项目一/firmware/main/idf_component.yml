@@ -1,0 +1,9 @@
+# 组件依赖（首次构建时由组件管理器自动下载）
+# 注意：IDF v6.1 中 ILI9341 驱动已移出到托管组件（不是内置），
+# esp_lcd_ili9341 已预声明，M2 启用 ui.c 时再加上 lvgl 与 esp_lvgl_port
+dependencies:
+  idf: ">=6.1"
+  espressif/esp-modbus: "^2.1.4"
+  espressif/esp_lcd_ili9341: "^2.0.2"
+  lvgl/lvgl: "^9.5.0"
+  espressif/esp_lvgl_port: "^2.8.0"
