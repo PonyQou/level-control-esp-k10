@@ -31,15 +31,16 @@ def main():
                 prefix="firmware")
     print(f"项目一固件: {n} 个文件")
 
-    # 2) 项目一上位机（保留实验数据与曲线作为证据）
-    n = zip_dir(r"C:\Users\陈智雄\Desktop\液位控制\项目一\pc_master",
+    # 2) 项目一上位机（保留实验数据与曲线作为证据；路径由脚本位置推导，可移植）
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    n = zip_dir(os.path.join(ROOT, "项目一", "pc_master"),
                 os.path.join(OUT, "项目一_上位机_Modbus主站.zip"),
                 exclude_dirs=(".venv", "__pycache__"),
                 prefix="pc_master")
     print(f"项目一上位机: {n} 个文件")
 
     # 3) 项目二网关（含 DI NodeSet 信息模型与方案文档）
-    n = zip_dir(r"C:\Users\陈智雄\Desktop\液位控制\项目二\gateway",
+    n = zip_dir(os.path.join(ROOT, "项目二", "gateway"),
                 os.path.join(OUT, "项目二_OPCUA网关.zip"),
                 exclude_dirs=(".venv", "__pycache__"),
                 prefix="gateway")
@@ -48,7 +49,7 @@ def main():
     # 方案文档单独打进网关 zip 的 docs 目录
     with zipfile.ZipFile(os.path.join(OUT, "项目二_OPCUA网关.zip"), "a",
                          zipfile.ZIP_DEFLATED) as z:
-        z.write(r"C:\Users\陈智雄\Desktop\液位控制\项目二\docs\方案.md",
+        z.write(os.path.join(ROOT, "项目二", "docs", "方案.md"),
                 "gateway/docs/方案.md")
     print("方案文档已附加")
 
