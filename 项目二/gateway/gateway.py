@@ -73,6 +73,7 @@ class TankGateway:
         self.write_queue = asyncio.Queue()   # 方法触发的写请求
         self.mb_connected = False
         self.initialized = False      # 首次成功读后，先用 Modbus 值初始化 UA 变量
+        self.prev = {}                # name -> (mod_val, ua_val) 上周期快照，用于区分变更来源
         self.last_error = ""
         self.poll_count = 0
         self._idx = None
@@ -156,7 +157,7 @@ class TankGateway:
         ns = self._idx
 
         @uamethod
-        def SetSetpoint(parent, value: float):
+        async def SetSetpoint(parent, value: float):
             lo, hi = rm.RANGES["SP"]
             if not (lo <= value <= hi):
                 return [ua.StatusCode(ua.StatusCodes.BadOutOfRange)]
@@ -165,7 +166,7 @@ class TankGateway:
             return [ua.StatusCode(ua.StatusCodes.Good)]
 
         @uamethod
-        def SetValveOut(parent, value: float):
+        async def SetValveOut(parent, value: float):
             lo, hi = rm.RANGES["VALVE_OUT"]
             if not (lo <= value <= hi):
                 return [ua.StatusCode(ua.StatusCodes.BadOutOfRange)]
@@ -174,28 +175,29 @@ class TankGateway:
             return [ua.StatusCode(ua.StatusCodes.Good)]
 
         @uamethod
-        def SaveParams(parent):
+        async def SaveParams(parent):
             self.write_queue.put_nowait(("SAVE", 1))
-            return ua.StatusCode(ua.StatusCodes.Good)
+            return [ua.StatusCode(ua.StatusCodes.Good)]
 
         @uamethod
-        def ClearIntegral(parent):
+        async def ClearIntegral(parent):
             self.write_queue.put_nowait(("CLEAR_I", 1))
-            return ua.StatusCode(ua.StatusCodes.Good)
+            return [ua.StatusCode(ua.StatusCodes.Good)]
 
         @uamethod
-        def Start(parent):
+        async def Start(parent):
             self.write_queue.put_nowait(("RUN", 1))
-            return ua.StatusCode(ua.StatusCodes.Good)
+            return [ua.StatusCode(ua.StatusCodes.Good)]
 
         @uamethod
-        def Stop(parent):
+        async def Stop(parent):
             self.write_queue.put_nowait(("RUN", 0))
-            return ua.StatusCode(ua.StatusCodes.Good)
+            return [ua.StatusCode(ua.StatusCodes.Good)]
 
-        for m in (SetSetpoint, SetValveOut, SaveParams, ClearIntegral, Start, Stop):
+        for m, nargs in ((SetSetpoint, 1), (SetValveOut, 1), (SaveParams, 0),
+                          (ClearIntegral, 0), (Start, 0), (Stop, 0)):
             await tank_type.add_method(ns, m.__name__, m,
-                                       [ua.VariantType.Double],
+                                       [ua.VariantType.Double] * nargs,
                                        [ua.VariantType.StatusCode])
 
     # ---------------- 诊断辅助 ----------------
@@ -221,27 +223,53 @@ class TankGateway:
                     regs = h if grp == "hold" else i
                     mod_val = (regs[addr] if is_u16
                                else regs_to_f32(regs[addr], regs[addr + 1]))
-                    if not self.initialized:
-                        await self._safe_set(name, mod_val)
-                        continue
                     ua_val = await self.vars[name].read_value()
-                    if grp == "hold" and ua_val != mod_val:
-                        # UA 侧被客户端修改 → 校验并写回 Modbus
-                        if rkey and not (rm.RANGES[rkey][0] <= ua_val <= rm.RANGES[rkey][1]):
+                    if not self.initialized:
+                        # 初始化：若客户端在首轮前已写入（值≠类型默认），保留并交给下周期差分处理
+                        if grp == "hold" and ua_val != mod_val and ua_val != 0:
+                            self.prev[name] = (mod_val, ua_val)
+                        else:
+                            await self._safe_set(name, mod_val)
+                            self.prev[name] = (mod_val, mod_val)
+                        continue
+                    prev_mod, prev_ua = self.prev.get(name, (None, None))
+                    mod_changed = (prev_mod is not None) and (mod_val != prev_mod)
+                    ua_changed = (prev_ua is not None) and (ua_val != prev_ua)
+                    if prev_mod is None:
+                        self.prev[name] = (mod_val, ua_val)
+                    elif mod_changed and not ua_changed:
+                        # 外部改了 Modbus（K10 按键/上位机写）→ UA 跟随，绝不写回；
+                        # 关键：立即同步 prev_ua，防止下周期被误判为 UA 客户端写（F1 修复）
+                        await self._safe_set(name, mod_val)
+                        self.prev[name] = (mod_val, mod_val)
+                    elif ua_changed and not mod_changed:
+                        # UA 客户端改了变量 → 校验并写回 Modbus
+                        if grp != "hold":
+                            await self._safe_set(name, mod_val)
+                            self.prev[name] = (mod_val, mod_val)
+                        elif rkey and not (rm.RANGES[rkey][0] <= ua_val <= rm.RANGES[rkey][1]):
                             await self._safe_set(name, mod_val)   # 恢复原值
+                            self.prev[name] = (mod_val, mod_val)
                             await self._set_error(f"{name}={ua_val} 越界被拒")
                         else:
                             await self._mb_write(name, addr, is_u16, ua_val)
+                            self.prev[name] = (mod_val, ua_val)
                     elif ua_val != mod_val:
+                        # 两侧同时变化但不一致（罕见）：以设备（Modbus）为准
                         await self._safe_set(name, mod_val)
+                        self.prev[name] = (mod_val, mod_val)
+                    else:
+                        self.prev[name] = (mod_val, ua_val)
 
                 # 方法写队列
                 while not self.write_queue.empty():
                     name, value = self.write_queue.get_nowait()
                     print(f"[写队列] {name}={value}", flush=True)
                     if name in ("SAVE", "CLEAR_I", "RUN"):
-                        await self.mb.write_registers(rm.HOLD[name], [int(value)],
-                                                      device_id=1)
+                        r = await self.mb.write_registers(rm.HOLD[name], [int(value)],
+                                                          device_id=1)
+                        if r.isError():
+                            await self._set_error(f"方法 {name} 写失败: {r}")
                     else:
                         grp, addr, is_u16, _ = MODEL[name]
                         await self._mb_write(name, addr, is_u16, float(value))

@@ -116,6 +116,32 @@ static void control_task(void *arg)
         float kd = regs_get_f32(g_hold_regs, REG_KD);
         modbus_slave_unlock();
 
+        /* 第二道防线（F9 修复）：esp-modbus "先写后验"存在 10~30ms 校验滞后窗口，
+         * 非法/NaN 写入可能被快照读到并永久毒化模型。此处 isfinite + 钳位，
+         * 保证喂给模型/PID 的参数永远合法（寄存器回滚由 modbus 任务负责） */
+        if (!isfinite(sp))       sp = 250.0f;
+        if (!isfinite(kp))       kp = 3.0f;
+        if (!isfinite(ki))       ki = 0.05f;
+        if (!isfinite(kd))       kd = 0.5f;
+        if (!isfinite(area))     area = 200.0f;
+        if (!isfinite(height))   height = 500.0f;
+        if (!isfinite(qin_max))  qin_max = 8.0f;
+        if (!isfinite(qout_max)) qout_max = 4.0f;
+        if (!isfinite(exp_n))    exp_n = 0.5f;
+        if (!isfinite(speed))    speed = 1.0f;
+        if (!isfinite(valve_out)) valve_out = 30.0f;
+        sp       = fminf(fmaxf(sp,       SP_MIN),      SP_MAX);
+        kp       = fminf(fmaxf(kp,       KP_MIN),      KP_MAX);
+        ki       = fminf(fmaxf(ki,       KP_MIN),      KP_MAX);
+        kd       = fminf(fmaxf(kd,       KP_MIN),      KP_MAX);
+        area     = fminf(fmaxf(area,     AREA_MIN),    AREA_MAX);
+        height   = fminf(fmaxf(height,   HEIGHT_MIN),  HEIGHT_MAX);
+        qin_max  = fminf(fmaxf(qin_max,  QMAX_MIN),    QMAX_MAX);
+        qout_max = fminf(fmaxf(qout_max, QMAX_MIN),    QMAX_MAX);
+        exp_n    = fminf(fmaxf(exp_n,    EXP_N_MIN),   EXP_N_MAX);
+        speed    = fminf(fmaxf(speed,    SPEED_MIN),   SPEED_MAX);
+        valve_out= fminf(fmaxf(valve_out, VALVE_MIN),  VALVE_MAX);
+
         /* 模型参数热更新 */
         s_tank.area_cm2 = area;
         s_tank.height_mm = height;

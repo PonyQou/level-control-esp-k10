@@ -137,10 +137,10 @@ def main(ip):
         hr_before, _ = read_all(c)
         if isinstance(val, int):
             c.write_registers(addr, [val], device_id=1)
-            after = read_all(c)[0][addr]
         else:
             c.write_registers(addr, f32_to_regs(val), device_id=1)
-            after = f32(read_all(c)[0], addr)
+        time.sleep(0.2)   # 固件"先写后验"异步回滚有 10~30ms 窗口，等待完成再回读
+        after = read_all(c)[0][addr] if isinstance(val, int) else f32(read_all(c)[0], addr)
         before = hr_before[addr] if isinstance(val, int) else f32(hr_before, addr)
         ok = (after == before)
         print(f"  {'✓ 已拒绝' if ok else '✗ 未被拒绝!'} {name}: 写入后值 {after}（原值 {before}）")

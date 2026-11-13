@@ -307,14 +307,22 @@ void modbus_slave_task(void *arg)
         s_has_activity = true;
 
         if (info.type & MB_EVENT_HOLDING_REG_WR) {
-            /* 主站写了保持寄存器：校验，越界恢复旧值 */
+            /* 主站写了保持寄存器：校验，越界恢复旧值。
+             * F10/F11 修复：回滚仅限本次事件的寄存器区域（off..off+n-1），
+             * 不再全量恢复——避免把按键/线圈等本地修改一并回滚，
+             * 也避免连续两次写入（先合法后非法）时误伤合法写入 */
             mbc_slave_lock(s_slave_handle);
+            int ev_off = (int)info.mb_offset;
+            int ev_n = (int)info.size;
             if (validate_write(&info)) {
                 memcpy(s_hold_mirror, g_hold_regs, sizeof(g_hold_regs));
                 ESP_LOGI(TAG, "主站写入 offset=%u 已接受", (unsigned)info.mb_offset);
             } else {
-                memcpy(g_hold_regs, s_hold_mirror, sizeof(g_hold_regs));
-                ESP_LOGW(TAG, "主站写入 offset=%u 越界，已拒绝并恢复原值",
+                if (ev_off >= 0 && ev_n > 0 && ev_off + ev_n <= HOLD_REG_COUNT) {
+                    memcpy(g_hold_regs + ev_off, s_hold_mirror + ev_off,
+                           ev_n * sizeof(uint16_t));
+                }
+                ESP_LOGW(TAG, "主站写入 offset=%u 越界，已拒绝并恢复该区域原值",
                          (unsigned)info.mb_offset);
             }
             mbc_slave_unlock(s_slave_handle);
