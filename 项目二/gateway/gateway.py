@@ -10,6 +10,7 @@
 运行：python gateway.py [K10_IP] [UA端口=4840]
 """
 import asyncio
+import os
 import struct
 import sys
 import traceback
@@ -26,7 +27,8 @@ import regs_map as rm
 
 UA_NS = "http://k10-gateway.org/UA"
 DI_NS = "http://opcfoundation.org/UA/DI/"
-NODESET_DI = "nodesets/Opc.Ua.Di.NodeSet2.xml"
+NODESET_DI = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "nodesets", "Opc.Ua.Di.NodeSet2.xml")  # __file__ 相对，任意目录运行均可
 DI_DEVICE_TYPE = 1002                 # DeviceType 在 DI NodeSet 中的 NodeId
 POLL_MS = 0.5
 
