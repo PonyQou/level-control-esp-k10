@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# ESP-IDF
+build/
+managed_components/
+sdkconfig
+dependencies.lock
+
+# IDE / 系统
+.vscode/
+Thumbs.db
+desktop.ini
