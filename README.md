@@ -239,7 +239,7 @@ python -m venv .venv
 
 ```
 液位控制/
-├── 项目实操指南.md          ← 本文件
+├── README.md                ← 本文件（GitHub 首页自动渲染）
 ├── 项目一/
 │   ├── firmware/            固件副本（提交用；开发在 D 盘）
 │   ├── pc_master/           上位机（main.py 入口）
