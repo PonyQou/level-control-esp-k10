@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "液位控制（文档/上位机/网关/提交物）"
+    },
+    {
+      "path": "D:/esp/projects/k10_level_control/firmware",
+      "name": "固件-开发目录（D盘，可编译烧录）"
+    },
+    {
+      "path": "D:/esp/projects/ui_sim",
+      "name": "UI模拟器（布局断言验证）"
+    }
+  ],
+  "settings": {
+    "files.encoding": "utf8",
+    "files.autoGuessEncoding": false,
+    "editor.renderWhitespace": "none",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "search.exclude": {
+      "**/build": true,
+      "**/managed_components": true,
+      "**/.venv": true,
+      "**/__pycache__": true
+    },
+    "files.exclude": {
+      "**/.venv": true,
+      "**/__pycache__": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "espressif.esp-idf-extension"
+    ]
+  }
+}
